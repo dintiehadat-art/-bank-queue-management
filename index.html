@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#123b73">
+<title>Bank Queue Management</title>
+<style>
+* {
+    box-sizing: border-box;
+}
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f1f5f9;
+    color: #1e293b;
+}
+header {
+    background: #123b73;
+    color: white;
+    text-align: center;
+    padding: 24px 15px;
+}
+header h1 {
+    margin: 0 0 8px;
+    font-size: 25px;
+}
+header p {
+    margin: 0;
+    font-size: 14px;
+}
+.container {
+    max-width: 650px;
+    margin: 20px auto;
+    padding: 0 15px;
+}
+.card {
+    background: white;
+    padding: 20px;
+    margin-bottom: 18px;
+    border-radius: 12px;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.06);
+}
+h2 {
+    margin-top: 0;
+    font-size: 19px;
+}
+input {
+    width: 100%;
+    padding: 13px;
+    margin: 8px 0 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 7px;
+    font-size: 16px;
+}
+button {
+    border: none;
+    border-radius: 7px;
+    padding: 13px;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+}
+.primary {
+    width: 100%;
+    background: #123b73;
+    color: white;
+}
+.success {
+    background: #15803d;
+    color: white;
+    width: 100%;
+    margin-top: 10px;
+}
+.secondary {
+    background: #e2e8f0;
+    color: #1e293b;
+    width: 100%;
+    margin-top: 10px;
+}
+.danger {
+    background: #fee2e2;
+    color: #991b1b;
+    width: 100%;
+    margin-top: 10px;
+}
+.stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 18px;
+}
+.stat {
+    background: white;
+    padding: 15px 5px;
+    border-radius: 10px;
+    text-align: center;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+}
+.stat strong {
+    display: block;
+    font-size: 25px;
+    color: #123b73;
+}
+.stat span {
+    font-size: 12px;
+}
+.current {
+    background: #e0f2fe;
+    border: 1px solid #7dd3fc;
+    border-radius: 10px;
+    padding: 16px;
+    text-align: center;
+}
+.ticket {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 12px;
+    margin: 9px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+.ticket strong {
+    color: #123b73;
+}
+.ticket small {
+    display: block;
+    color: #64748b;
+    margin-top: 4px;
+}
+.badge {
+    font-size: 12px;
+    background: #fef3c7;
+    color: #92400e;
+    padding: 5px 8px;
+    border-radius: 12px;
+}
+.empty {
+    text-align: center;
+    color: #64748b;
+    padding: 15px 0;
+}
+footer {
+    text-align: center;
+    padding: 20px;
+    color: #64748b;
+    font-size: 12px;
+}
+button:focus, input:focus {
+    outline: 2px solid #60a5fa;
+    outline-offset: 2px;
+}
+</style>
+</head>
+<body>
+<header>
+    <h1>🏦 Bank Queue System</h1>
+    <p>Customer Queue Management</p>
+</header>
+<main class="container">
+<section class="stats">
+    <div class="stat">
+        <strong id="waitingCount">0</strong>
+        <span>Waiting</span>
+    </div>
+    <div class="stat">
+        <strong id="servedCount">0</strong>
+        <span>Served</span>
+    </div>
+    <div class="stat">
+        <strong id="totalCount">0</strong>
+        <span>Registered</span>
+    </div>
+</section>
+<section class="card">
+    <h2>Register a Customer</h2>
+    <form id="customerForm">
+        <label for="customerName">Customer's full name</label>
+        <input
+            type="text"
+            id="customerName"
+            placeholder="Enter customer name"
+            maxlength="80"
+            required
+        >
+        <button type="submit" class="primary">
+            Get Queue Number
+        </button>
+    </form>
+</section>
+<section class="card">
+    <h2>Now Serving</h2>
+    <div class="current" aria-live="polite">
+        <h3 id="currentNumber">No customer called</h3>
+        <p id="currentName">Call the next customer to begin.</p>
+    </div>
+    <button id="callNext" class="primary" style="margin-top:12px">
+        📢 Call Next Customer
+    </button>
+    <button id="serveCustomer" class="success">
+        ✓ Mark Customer as Served
+    </button>
+</section>
+<section class="card">
+    <h2>Waiting Queue</h2>
+    <div id="queueList" aria-live="polite">
+        <p class="empty">No customers are waiting.</p>
+    </div>
+</section>
+<section class="card">
+    <h2>Session Controls</h2>
+    <button id="resetQueue" class="danger">
+        Reset Queue
+    </button>
+    <p style="font-size:12px;color:#64748b">
+        Resetting clears the current session's data.
+    </p>
+</section>
+</main>
+<footer>
+    Bank Queue Management System · Educational Project
+</footer>
+<script>
+const queue = [];
+const servedCustomers = [];
+let nextNumber = 1;
+let currentCustomer = null;
+const form = document.getElementById("customerForm");
+const nameInput = document.getElementById("customerName");
+const queueList = document.getElementById("queueList");
+function formatNumber(number) {
+    return String(number).padStart(3, "0");
+}
+function updateDisplay() {
+    document.getElementById("waitingCount").textContent =
+        queue.length;
+    document.getElementById("servedCount").textContent =
+        servedCustomers.length;
+    document.getElementById("totalCount").textContent =
+        nextNumber - 1;
+    if (currentCustomer) {
+        document.getElementById("currentNumber").textContent =
+            "Ticket #" + formatNumber(currentCustomer.number);
+        document.getElementById("currentName").textContent =
+            currentCustomer.name;
+    } else {
+        document.getElementById("currentNumber").textContent =
+            "No customer called";
+        document.getElementById("currentName").textContent =
+            "Call the next customer to begin.";
+    }
+    queueList.replaceChildren();
+    if (queue.length === 0) {
+        const empty = document.createElement("p");
+        empty.className = "empty";
+        empty.textContent = "No customers are waiting.";
+        queueList.appendChild(empty);
+        return;
+    }
+    queue.forEach(function(customer) {
+        const ticket = document.createElement("div");
+        ticket.className = "ticket";
+        const details = document.createElement("div");
+        const number = document.createElement("strong");
+        number.textContent =
+            "Ticket #" + formatNumber(customer.number);
+        const name = document.createElement("small");
+        name.textContent = customer.name;
+        details.append(number, name);
+        const badge = document.createElement("span");
+        badge.className = "badge";
+        badge.textContent = "Waiting";
+        ticket.append(details, badge);
+        queueList.appendChild(ticket);
+    });
+}
+form.addEventListener("submit", function(event) {
+    event.preventDefault();
+    const name = nameInput.value.trim();
+    if (!name) {
+        alert("Please enter the customer's name.");
+        return;
+    }
+    queue.push({
+        number: nextNumber,
+        name: name
+    });
+    alert(
+        name + ", your queue number is " +
+        formatNumber(nextNumber) + "."
+    );
+    nextNumber++;
+    nameInput.value = "";
+    updateDisplay();
+    nameInput.focus();
+});
+document.getElementById("callNext").addEventListener(
+    "click", function() {
+        if (currentCustomer) {
+            alert("Please finish serving the current customer first.");
+            return;
+        }
+        if (queue.length === 0) {
+            alert("There are no customers waiting.");
+            return;
+        }
+        // FIFO: remove the first customer in the queue.
+        currentCustomer = queue.shift();
+        updateDisplay();
+        alert(
+            "Now serving " + currentCustomer.name +
+            ", ticket #" + formatNumber(currentCustomer.number)
+        );
+    }
+);
+document.getElementById("serveCustomer").addEventListener(
+    "click", function() {
+        if (!currentCustomer) {
+            alert("Call a customer before marking them as served.");
+            return;
+        }
+        servedCustomers.push(currentCustomer);
+        alert(currentCustomer.name + " has been served.");
+        currentCustomer = null;
+        updateDisplay();
+    }
+);
+document.getElementById("resetQueue").addEventListener(
+    "click", function() {
+        const confirmed = confirm(
+            "Are you sure you want to clear this session?"
+        );
+        if (!confirmed) {
+            return;
+        }
+        queue.length = 0;
+        servedCustomers.length = 0;
+        nextNumber = 1;
+        currentCustomer = null;
+        updateDisplay();
+    }
+);
+updateDisplay();
+</script>
+</body>
+</html>
